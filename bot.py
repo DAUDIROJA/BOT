@@ -1,11 +1,10 @@
 import discord
 from discord.ext import commands
-import os
 
 # Set up intents
 intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
+intents.message_content = True  # Allows bot to see message content
+intents.members = True         # Allows bot to see server members
 
 # Create bot with intents
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -22,5 +21,4 @@ async def hello(ctx):
 async def price(ctx):
     await ctx.send("Bitcoin price: $12345 (fake for now!)")
 
-# Use environment variable for token
-bot.run(os.getenv("MTM3NjYyMjAxMTA0Mzk0MjQxMA.G_Bkj_.rfSQ-HXoh7BJJl2vV-AhjeucEfg31SPErXB5XQ"))
+bot.run("MTM3NjYyMjAxMTA0Mzk0MjQxMA.G_Bkj_.rfSQ-HXoh7BJJl2vV-AhjeucEfg31SPErXB5XQ")
