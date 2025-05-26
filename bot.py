@@ -23,4 +23,4 @@ async def price(ctx):
     await ctx.send("Bitcoin price: $12345 (fake for now!)")
 
 # Use environment variable for token
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(os.getenv("MTM3NjYyMjAxMTA0Mzk0MjQxMA.G_iQN4.8RQtBzROEn9hkXcdj-TZVvD3kWmOb55mry-z_Y"))
