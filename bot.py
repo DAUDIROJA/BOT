@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import os
 
 # Set up intents
 intents = discord.Intents.default()
@@ -21,4 +22,4 @@ async def hello(ctx):
 async def price(ctx):
     await ctx.send("Bitcoin price: $12345 (fake for now!)")
 
-bot.run("MTM3NjYyMjAxMTA0Mzk0MjQxMA.G_Bkj_.rfSQ-HXoh7BJJl2vV-AhjeucEfg31SPErXB5XQ")
+bot.run(os.getenv("DISCORD_TOKEN"))
