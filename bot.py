@@ -1,52 +1,72 @@
 import discord
 from discord.ext import commands
 import os
-import random
+import asyncio
+import websockets
+import json
 
-# Set up intents
+# ─────── Discord Bot Setup ─────── #
 intents = discord.Intents.default()
-intents.message_content = True  # Allows bot to read message content
-
-# Create bot with command prefix and intents
+intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Bot ready event
 @bot.event
 async def on_ready():
-    print("BOT is ready and online!")
+    print("✅ BOT is online and ready!")
 
-# Command: !hi
 @bot.command()
 async def hi(ctx):
     await ctx.send("Yo bro, BOT here for you!")
 
-# Command: !status
 @bot.command()
 async def status(ctx):
-    await ctx.send("Bot is running smoothly on Render ☁️💪")
+    await ctx.send("Bot is up and ready to trade BTCUSDz on Deriv demo 🚀")
 
-# Command: !helpme
+# ─────── Deriv Trading Logic ─────── #
+async def place_btc_trade():
+    url = "wss://ws.deriv.net/websockets/v3?app_id=1089"
+    token = os.getenv("DERIV_TOKEN")  # Insert this in Render environment
+
+    async with websockets.connect(url) as ws:
+        # 1. Authorize
+        await ws.send(json.dumps({
+            "authorize": token
+        }))
+        auth_response = await ws.recv()
+        auth_data = json.loads(auth_response)
+        if "error" in auth_data:
+            return {"error": auth_data["error"]["message"]}
+
+        # 2. Place trade on BTCUSDz
+        trade_request = {
+            "buy": 1,
+            "price": 1,  # Amount in USD
+            "parameters": {
+                "amount": 1,
+                "basis": "stake",
+                "contract_type": "CALL",  # Use "PUT" for down
+                "currency": "USD",
+                "duration": 1,
+                "duration_unit": "m",
+                "symbol": "BTCUSDz"
+            }
+        }
+
+        await ws.send(json.dumps(trade_request))
+        trade_response = await ws.recv()
+        return json.loads(trade_response)
+
+# ─────── Discord Command to Trade ─────── #
 @bot.command()
-async def helpme(ctx):
-    help_text = (
-        "**Available Commands:**\n"
-        "`!hi` - Greets you.\n"
-        "`!status` - Shows if the bot is running.\n"
-        "`!helpme` - Lists available commands.\n"
-        "`!joke` - Sends a random trading-style joke.\n"
-    )
-    await ctx.send(help_text)
+async def demo(ctx):
+    await ctx.send("Placing trade on BTCUSDz (Deriv demo)...")
 
-# Command: !joke
-@bot.command()
-async def joke(ctx):
-    jokes = [
-        "Why did the trader go broke? Because he lost interest!",
-        "I told my bot to trade smart. Now it only watches charts and does nothing. 😂",
-        "Why do traders love the sun? Because it rises after every dip!",
-        "My bot said it's bullish... then it bought coffee ☕️ instead of stocks."
-    ]
-    await ctx.send(random.choice(jokes))
+    result = await place_btc_trade()
+    if "error" in result:
+        await ctx.send(f"❌ Trade failed: {result['error']}")
+    else:
+        contract_id = result["buy"]["contract_id"]
+        await ctx.send(f"✅ Trade placed! Contract ID: `{contract_id}`")
 
-# Run the bot using token from environment variables
-bot.run(os.getenv("DISCORD_TOKEN"))
+# ─────── Run the Bot ─────── #
+bot.run(os.getenv("DISCORD_TOKEN"))  # Set this in Render environment
