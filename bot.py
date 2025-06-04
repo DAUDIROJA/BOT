@@ -359,6 +359,14 @@ class PhaseTraderPro:
     def stop(self):
         self.running = False
 
+    async def stop_trading(self):
+        if self.running:
+            self.stop()
+            await self.close_all_trades()
+            await self.send_message("🛑 Trading stopped via /stop command")
+        else:
+            await self.send_message("⚠️ Bot is not currently running")
+
 async def start_discord(discord_bot):
     await discord_bot.start(os.getenv("DISCORD_TOKEN"))
 
@@ -392,6 +400,8 @@ async def main():
                 await trader.handle_config(parts[1], parts[2], parts[3])
         elif content == "/run" and trader.max_trades_per_phase:
             asyncio.create_task(trader.run())
+        elif content == "/stop":
+            await trader.stop_trading()
         await discord_bot.process_commands(message)
 
     # Telegram handlers
@@ -408,9 +418,13 @@ async def main():
         if trader.max_trades_per_phase:
             asyncio.create_task(trader.run())
 
+    async def stop(update, context):
+        await trader.stop_trading()
+
     telegram_app.add_handler(CommandHandler("start", start))
     telegram_app.add_handler(CommandHandler("config", config))
     telegram_app.add_handler(CommandHandler("run", run))
+    telegram_app.add_handler(CommandHandler("stop", stop))
 
     # Start Telegram polling in the same loop
     await telegram_app.initialize()
