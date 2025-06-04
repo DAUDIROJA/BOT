@@ -358,7 +358,13 @@ class PhaseTraderPro:
     def stop(self):
         self.running = False
 
+async def start_discord(discord_bot):
+    await discord_bot.start(os.getenv("DISCORD_TOKEN"))
+
 async def main():
+    # Get the current event loop
+    loop = asyncio.get_event_loop()
+
     # Initialize Discord bot
     intents = discord.Intents.default()
     intents.message_content = True
@@ -404,10 +410,27 @@ async def main():
     telegram_app.add_handler(CommandHandler("config", config))
     telegram_app.add_handler(CommandHandler("run", run))
 
-    # Start both bots
-    discord_task = asyncio.create_task(discord_bot.start(os.getenv("DISCORD_TOKEN")))
-    telegram_task = asyncio.create_task(telegram_app.run_polling())
-    await asyncio.gather(discord_task, telegram_task)
+    # Start Telegram polling in the same loop
+    await telegram_app.initialize()
+    await telegram_app.start()
+    telegram_updater = telegram_app.updater.start_polling(drop_pending_updates=True)
+
+    # Start Discord bot in the same loop
+    discord_task = loop.create_task(start_discord(discord_bot))
+
+    try:
+        # Keep the loop running
+        await asyncio.gather(discord_task, telegram_updater)
+    finally:
+        # Clean up on shutdown
+        await telegram_app.stop()
+        await telegram_app.shutdown()
+        await discord_bot.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Run the main coroutine in the current event loop
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
+    finally:
+        loop.close()
