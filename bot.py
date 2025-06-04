@@ -363,8 +363,9 @@ async def start_discord(discord_bot):
     await discord_bot.start(os.getenv("DISCORD_TOKEN"))
 
 async def main():
-    # Get the current event loop
-    loop = asyncio.get_event_loop()
+    # Create a new event loop to avoid deprecation warning
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Initialize Discord bot
     intents = discord.Intents.default()
@@ -429,7 +430,7 @@ async def main():
         await discord_bot.close()
 
 if __name__ == "__main__":
-    # Create a new event loop to avoid deprecation warning
+    # Run the main coroutine in the new event loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
