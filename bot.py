@@ -12,6 +12,7 @@ from telegram.ext import Application, CommandHandler
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger("httpx").setLevel(logging.WARNING)  # Suppress HTTP logs
 logger = logging.getLogger(__name__)
 
 class PhaseTraderPro:
@@ -428,8 +429,9 @@ async def main():
         await discord_bot.close()
 
 if __name__ == "__main__":
-    # Run the main coroutine in the current event loop
-    loop = asyncio.get_event_loop()
+    # Create a new event loop to avoid deprecation warning
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(main())
     finally:
