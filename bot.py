@@ -8,8 +8,7 @@ import pandas as pd
 import ta
 from datetime import datetime
 from typing import Optional, Tuple
-from telegram import Bot
-from telegram.ext import Application
+from telegram.ext import Application, CommandHandler
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -73,7 +72,7 @@ class PhaseTraderPro:
                     mt5.login,
                     login=int(os.getenv("MT5_LOGIN")),
                     password=os.getenv("MT5_PASSWORD"),
-                    server=os.getenv("MT5_SERVER", "Deriv-Demo")  # Default to Deriv-Demo
+                    server=os.getenv("MT5_SERVER", "Deriv-Demo")
                 )
 
                 if not authorized:
@@ -96,10 +95,6 @@ class PhaseTraderPro:
                 continue
         await self.send_message(f"⚠️ Failed to connect to MT5 after {retries} attempts")
         return False
-
-    # [Rest of your methods: get_equity, handle_config, print_status, get_market_data,
-    # check_conditions, execute_trade, monitor_phase, close_all_trades, run, stop]
-    # Copy these directly from your original code, as they remain unchanged
 
     async def get_equity(self) -> float:
         try:
@@ -369,11 +364,13 @@ async def main():
     intents.message_content = True
     discord_bot = commands.Bot(command_prefix="!", intents=intents)
 
+    # Initialize Telegram bot
+    telegram_app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
+    trader = PhaseTraderPro(discord_bot=discord_bot, telegram_app=telegram_app, telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"))
+
     @discord_bot.event
     async def on_ready():
         print("Discord BOT is ready!")
-        trader.telegram_app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
-        trader.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
         await trader.initialize()
 
     @discord_bot.event
@@ -387,32 +384,29 @@ async def main():
                 await trader.handle_config(parts[1], parts[2], parts[3])
         elif content == "/run" and trader.max_trades_per_phase:
             asyncio.create_task(trader.run())
+        await discord_bot.process_commands(message)
 
-    # Initialize Telegram bot
-    telegram_app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
-    trader = PhaseTraderPro(discord_bot=discord_bot, telegram_app=telegram_app)
-
-    @telegram_app.message_handler(commands=['start'])
+    # Telegram handlers
     async def start(update, context):
         await trader.send_message("🔥 PHASE TRADER PRO v3.4 🔥\nSend /config max_trades profit_target max_phases to start.")
         trader.awaiting_input = "config"
 
-    @telegram_app.message_handler(commands=['config'])
     async def config(update, context):
         parts = update.message.text.split()
         if len(parts) == 4:
             await trader.handle_config(parts[1], parts[2], parts[3])
 
-    @telegram_app.message_handler(commands=['run'])
     async def run(update, context):
         if trader.max_trades_per_phase:
             asyncio.create_task(trader.run())
 
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(CommandHandler("config", config))
+    telegram_app.add_handler(CommandHandler("run", run))
+
     # Start both bots
-    await telegram_app.initialize()
     discord_task = asyncio.create_task(discord_bot.start(os.getenv("DISCORD_TOKEN")))
     telegram_task = asyncio.create_task(telegram_app.run_polling())
-
     await asyncio.gather(discord_task, telegram_task)
 
 if __name__ == "__main__":
